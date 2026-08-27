@@ -1,0 +1,4 @@
+{
+  "3DModels": [".stl", ".obj", ".fbx"],
+  "Documents": [".pdf", ".doc", ".docx", ".txt", ".rtf", ".odt", ".md", ".pages", ".epub"]
+}
