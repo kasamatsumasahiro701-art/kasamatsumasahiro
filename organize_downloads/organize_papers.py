@@ -20,6 +20,7 @@ import argparse
 import json
 import re
 import sys
+import unicodedata
 from pathlib import Path
 
 try:
@@ -36,15 +37,26 @@ UNCATEGORIZED_DEFAULT = "Uncategorized"
 MAX_TITLE_LEN = 80
 INVALID_CHARS = re.compile(r'[\\/:*?"<>|]')
 YEAR_RE = re.compile(r"\b(19|20)\d{2}\b")
+# Reserved device names that Windows refuses to use as a file/folder name.
+WINDOWS_RESERVED_NAMES = {"CON", "PRN", "AUX", "NUL"} | {f"COM{i}" for i in range(1, 10)} | {
+    f"LPT{i}" for i in range(1, 10)
+}
+# Unicode categories that are control/formatting/unassigned characters -
+# these can turn up in text extracted from PDFs with broken font encodings
+# (e.g. CID fonts without a ToUnicode map) and are invalid in Windows paths.
+_UNSAFE_UNICODE_CATEGORIES = {"Cc", "Cf", "Co", "Cs", "Cn"}
 
 
 def sanitize(text: str, max_len: int | None = None) -> str:
+    text = "".join(ch for ch in text if unicodedata.category(ch) not in _UNSAFE_UNICODE_CATEGORIES)
     text = INVALID_CHARS.sub("", text)
     text = re.sub(r"\s+", "_", text.strip())
-    text = text.strip("_.")
+    text = text.strip("_. ")
     if max_len:
         text = text[:max_len].rstrip("_")
-    return text or "unknown"
+    if not text or text.upper() in WINDOWS_RESERVED_NAMES:
+        return "unknown"
+    return text
 
 
 def guess_author_surname(raw_author: str | None) -> str | None:
@@ -60,8 +72,14 @@ def guess_author_surname(raw_author: str | None) -> str | None:
 def guess_title_from_text(text: str) -> str | None:
     for line in text.splitlines():
         line = line.strip()
-        if 10 <= len(line) <= 200 and not line.isdigit():
-            return line
+        if not (10 <= len(line) <= 200) or line.isdigit():
+            continue
+        # Skip lines that are mostly garbled/control characters, which can
+        # happen with PDFs that use broken font encodings.
+        letters = sum(ch.isalpha() for ch in line)
+        if letters / len(line) < 0.5:
+            continue
+        return line
     return None
 
 
@@ -234,14 +252,20 @@ def main(argv: list[str] | None = None) -> int:
 
         if args.dry_run:
             print(f"[dry-run] {pdf_path.name} -> {dest_path.relative_to(target)}{note}")
+            processed += 1
         else:
-            dest_dir.mkdir(parents=True, exist_ok=True)
-            pdf_path.rename(dest_path)
+            try:
+                dest_dir.mkdir(parents=True, exist_ok=True)
+                pdf_path.rename(dest_path)
+            except OSError as exc:
+                print(f"[skip] {pdf_path.name}: could not move it ({exc})")
+                failed += 1
+                continue
             print(f"{pdf_path.name} -> {dest_path.relative_to(target)}{note}")
-        processed += 1
+            processed += 1
 
     print(f"\nDone. {processed} paper(s) {'would be ' if args.dry_run else ''}processed, "
-          f"{skipped} already organized, {failed} failed to read.")
+          f"{skipped} already organized, {failed} failed.")
     return 0
 
 
