@@ -86,26 +86,35 @@ pip install pypdf
 
 ### 使い方(キーワードで分類する場合)
 
-1. `keywords.example.json` をコピーして `keywords.json` を作り、自分の研究分野に
-   合わせてカテゴリ名とキーワードを編集する
+すぐ使える設定ファイルを2種類用意しています。
+
+- `keywords_natural_science.json` : 自然科学向け(Biology / Chemistry / Physics /
+  MedicinePharmacy / EarthAndEnvironment / MathematicsStatistics)
+- `keywords.example.json` : 情報工学・社会科学寄りの例(MachineLearning / NLP /
+  ComputerVision / Biology / Economics / Psychology)
+
+自分の分野に近い方をそのまま指定して実行できます。
+
+```bash
+# まず dry-run で確認する
+python organize_papers.py --keywords keywords_natural_science.json --dry-run
+
+# 問題なければ実行する
+python organize_papers.py --keywords keywords_natural_science.json
+```
+
+タイトルと本文(先頭3ページ)にキーワードが含まれるかで判定し、最初に一致した
+カテゴリに分類されます。どれにも一致しない論文は `Uncategorized` フォルダへ
+入ります。
+
+カテゴリやキーワードを自分の研究テーマに合わせて調整したい場合は、上記の
+どちらかのファイルをコピーして(例: `copy keywords_natural_science.json my_keywords.json`)、
+メモ帳などで編集してください。
    ```json
    {
      "MachineLearning": ["machine learning", "deep learning", "neural network"],
      "Biology": ["gene expression", "protein", "cell biology"]
    }
-   ```
-   タイトルと本文(先頭3ページ)にキーワードが含まれるかで判定し、最初に一致した
-   カテゴリに分類されます。どれにも一致しない論文は `Uncategorized` フォルダへ
-   入ります。
-
-2. まず dry-run で確認する
-   ```bash
-   python organize_papers.py --keywords keywords.json --dry-run
-   ```
-
-3. 問題なければ実行する
-   ```bash
-   python organize_papers.py --keywords keywords.json
    ```
 
 ### その他のオプション

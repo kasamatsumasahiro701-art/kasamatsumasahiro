@@ -1,0 +1,20 @@
+{
+  "Biology": ["biology", "biological", "gene", "genome", "genetic", "protein", "cell", "cellular",
+              "DNA", "RNA", "organism", "species", "ecology", "ecological", "microbiology",
+              "生物学", "遺伝子", "ゲノム", "タンパク質", "細胞", "生態学"],
+  "Chemistry": ["chemistry", "chemical", "molecule", "molecular", "compound", "reaction", "synthesis",
+                "catalyst", "polymer", "organic chemistry", "inorganic chemistry",
+                "化学", "分子", "化合物", "反応", "合成", "触媒"],
+  "Physics": ["physics", "quantum", "particle", "relativity", "thermodynamics", "electromagnetic",
+              "mechanics", "optics", "astrophysics",
+              "物理学", "量子", "粒子", "熱力学", "光学", "天体物理"],
+  "MedicinePharmacy": ["clinical", "patient", "disease", "treatment", "therapy", "drug", "pharmacology",
+                        "diagnosis", "medicine", "medical",
+                        "臨床", "患者", "疾患", "治療", "薬理", "診断", "医学", "薬学"],
+  "EarthAndEnvironment": ["climate", "climate change", "earthquake", "geology", "geological",
+                          "environment", "environmental", "ecosystem", "atmosphere", "ocean",
+                          "地球科学", "環境", "気候", "生態系", "大気", "海洋"],
+  "MathematicsStatistics": ["theorem", "equation", "statistical", "statistics", "probability",
+                            "algorithm", "mathematical", "mathematics",
+                            "数学", "統計", "確率", "定理", "アルゴリズム"]
+}
