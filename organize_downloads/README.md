@@ -60,7 +60,31 @@ Biology など)へ振り分けるスクリプトです。
 pip install pypdf
 ```
 
-### 使い方
+分類方法は2種類あります。**どちらか一方**を指定してください。
+
+- `--keywords keywords.json` : キーワードでカテゴリ分け(例: MachineLearning, Biology)
+- `--by-author` : 著者(姓)ごとにフォルダ分け
+
+### 使い方(著者ごとに分類する場合)
+
+オプションを付けるだけで、PDFから抽出した著者の姓ごとにフォルダが自動で作られます
+(例: `Smith/Smith_2023_Deep_Learning_for_NLP.pdf`)。
+
+1. まず dry-run で確認する
+   ```bash
+   python organize_papers.py --by-author --dry-run
+   ```
+
+2. 問題なければ実行する(デフォルトは `~/Downloads` 直下のPDFが対象)
+   ```bash
+   python organize_papers.py --by-author
+   ```
+
+※ 著者名がPDFのメタデータから取得できない場合は `UnknownAuthor` フォルダに
+入ります。共著者が複数いる場合は、1人目の著者の姓のみが使われます。同姓の
+別人がいる場合は同じフォルダにまとまってしまう点にご注意ください。
+
+### 使い方(キーワードで分類する場合)
 
 1. `keywords.example.json` をコピーして `keywords.json` を作り、自分の研究分野に
    合わせてカテゴリ名とキーワードを編集する
@@ -79,7 +103,7 @@ pip install pypdf
    python organize_papers.py --keywords keywords.json --dry-run
    ```
 
-3. 問題なければ実行する(デフォルトは `~/Downloads` 直下のPDFが対象)
+3. 問題なければ実行する
    ```bash
    python organize_papers.py --keywords keywords.json
    ```
@@ -89,12 +113,12 @@ pip install pypdf
 ```bash
 # organize_downloads.py を先に実行していて、論文PDFが Downloads/Documents に
 # 移動済みの場合など、サブフォルダの中も探したいとき
-python organize_papers.py --keywords keywords.json --path "~/Downloads/Documents" --recursive
+python organize_papers.py --by-author --path "~/Downloads/Documents" --recursive
 
 # リネームはせず、フォルダ分けだけ行いたいとき
-python organize_papers.py --keywords keywords.json --no-rename
+python organize_papers.py --by-author --no-rename
 
-# 「該当なし」フォルダの名前を変えたいとき
+# 「該当なし」フォルダの名前を変えたいとき(キーワード分類のみ)
 python organize_papers.py --keywords keywords.json --uncategorized-folder Misc
 ```
 

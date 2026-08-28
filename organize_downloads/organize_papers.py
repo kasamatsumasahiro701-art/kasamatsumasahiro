@@ -1,11 +1,14 @@
 #!/usr/bin/env python3
 """Organize downloaded academic paper PDFs: rename by Author_Year_Title and
-sort into keyword-based category folders.
+sort into folders either by keyword category or by author.
 
 Usage:
     python organize_papers.py --keywords keywords.json [--path PATH] [--dry-run]
                                [--no-rename] [--recursive]
                                [--uncategorized-folder NAME]
+
+    python organize_papers.py --by-author [--path PATH] [--dry-run]
+                               [--no-rename] [--recursive]
 
 Requires the 'pypdf' package:
     pip install pypdf
@@ -166,23 +169,23 @@ def unique_destination(dest: Path) -> Path:
         counter += 1
 
 
-def iter_pdfs(target: Path, recursive: bool, known_folders: set[str]):
+def iter_pdfs(target: Path, recursive: bool):
     pattern = "**/*.pdf" if recursive else "*.pdf"
     for entry in sorted(target.glob(pattern)):
-        if not entry.is_file():
-            continue
-        if recursive and entry.parent.name in known_folders:
-            continue
-        yield entry
+        if entry.is_file():
+            yield entry
 
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--path", default=str(Path.home() / "Downloads"),
                          help="Folder containing the PDF papers (default: ~/Downloads)")
-    parser.add_argument("--keywords", required=True,
-                         help="Path to a JSON file mapping category -> list of keywords "
-                              "(see keywords.example.json)")
+    group = parser.add_mutually_exclusive_group(required=True)
+    group.add_argument("--keywords",
+                        help="Path to a JSON file mapping category -> list of keywords "
+                             "(see keywords.example.json)")
+    group.add_argument("--by-author", action="store_true",
+                        help="Sort into one folder per author's surname instead of by keyword")
     parser.add_argument("--dry-run", action="store_true",
                          help="Show what would happen without moving/renaming anything")
     parser.add_argument("--no-rename", action="store_true",
@@ -199,14 +202,14 @@ def main(argv: list[str] | None = None) -> int:
         print(f"Error: '{target}' is not a directory.", file=sys.stderr)
         return 1
 
-    keywords = load_keywords(args.keywords)
-    known_folders = set(keywords.keys()) | {args.uncategorized_folder}
+    keywords = None if args.by_author else load_keywords(args.keywords)
 
     print(f"Scanning: {target}{' (dry run)' if args.dry_run else ''}")
     processed = 0
+    skipped = 0
     failed = 0
 
-    for pdf_path in iter_pdfs(target, args.recursive, known_folders):
+    for pdf_path in iter_pdfs(target, args.recursive):
         try:
             info = extract_paper_info(pdf_path)
         except Exception as exc:
@@ -214,7 +217,16 @@ def main(argv: list[str] | None = None) -> int:
             failed += 1
             continue
 
-        category = classify(info, keywords, args.uncategorized_folder)
+        if args.by_author:
+            category = sanitize(info.author, 40)
+        else:
+            category = classify(info, keywords, args.uncategorized_folder)
+
+        if args.recursive and pdf_path.parent.name == category:
+            # Already sitting in its correct category folder from a previous run.
+            skipped += 1
+            continue
+
         new_name = pdf_path.name if args.no_rename else build_filename(info, pdf_path.suffix)
         dest_dir = target / category
         dest_path = unique_destination(dest_dir / new_name)
@@ -228,7 +240,8 @@ def main(argv: list[str] | None = None) -> int:
             print(f"{pdf_path.name} -> {dest_path.relative_to(target)}{note}")
         processed += 1
 
-    print(f"\nDone. {processed} paper(s) {'would be ' if args.dry_run else ''}processed, {failed} failed to read.")
+    print(f"\nDone. {processed} paper(s) {'would be ' if args.dry_run else ''}processed, "
+          f"{skipped} already organized, {failed} failed to read.")
     return 0
 
 
