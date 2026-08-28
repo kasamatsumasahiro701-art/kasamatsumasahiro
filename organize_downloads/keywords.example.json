@@ -1,0 +1,8 @@
+{
+  "MachineLearning": ["machine learning", "deep learning", "neural network", "transformer", "reinforcement learning"],
+  "NLP": ["natural language processing", "language model", "text classification", "machine translation"],
+  "ComputerVision": ["image recognition", "object detection", "computer vision", "convolutional"],
+  "Biology": ["gene expression", "protein", "cell biology", "genome"],
+  "Economics": ["economic growth", "market equilibrium", "econometric", "game theory"],
+  "Psychology": ["cognitive", "behavioral study", "psychological"]
+}
