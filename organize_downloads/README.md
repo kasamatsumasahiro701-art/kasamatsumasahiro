@@ -60,10 +60,31 @@ Biology など)へ振り分けるスクリプトです。
 pip install pypdf
 ```
 
-分類方法は2種類あります。**どちらか一方**を指定してください。
+分類方法は3種類あります。**いずれか1つ**を指定してください。
 
+- `--title-only` : フォルダ分けはせず、`Papers` フォルダに集めて**タイトルだけ**にリネーム
 - `--keywords keywords.json` : キーワードでカテゴリ分け(例: MachineLearning, Biology)
 - `--by-author` : 著者(姓)ごとにフォルダ分け
+
+### 使い方(フォルダ分けせず、タイトルだけにリネームする場合)
+
+分類は行わず、対象のPDFをすべて `Papers` フォルダ(名前は変更可)に集めて、
+ファイル名を **論文のタイトルだけ** に変更します(例: `Gene_Expression_in_Cancer_Cells.pdf`)。
+
+1. まず dry-run で確認する
+   ```bash
+   python organize_papers.py --title-only --dry-run
+   ```
+
+2. 問題なければ実行する
+   ```bash
+   python organize_papers.py --title-only
+   ```
+
+3. 集める先のフォルダ名を変えたい場合
+   ```bash
+   python organize_papers.py --title-only --papers-folder MyPapers
+   ```
 
 ### 使い方(著者ごとに分類する場合)
 

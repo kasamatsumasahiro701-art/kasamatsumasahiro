@@ -10,6 +10,9 @@ Usage:
     python organize_papers.py --by-author [--path PATH] [--dry-run]
                                [--no-rename] [--recursive]
 
+    python organize_papers.py --title-only [--path PATH] [--dry-run]
+                               [--recursive] [--papers-folder NAME]
+
 Requires the 'pypdf' package:
     pip install pypdf
 """
@@ -102,12 +105,16 @@ def guess_year(metadata_date: str | None, text: str) -> str | None:
 
 
 class PaperInfo:
-    def __init__(self, title: str, author: str, year: str, text_sample: str, guessed: bool):
+    def __init__(self, title: str, author: str, year: str, text_sample: str,
+                 title_guessed: bool, author_guessed: bool, year_guessed: bool):
         self.title = title
         self.author = author
         self.year = year
         self.text_sample = text_sample
-        self.guessed = guessed
+        self.title_guessed = title_guessed
+        self.author_guessed = author_guessed
+        self.year_guessed = year_guessed
+        self.guessed = title_guessed or author_guessed or year_guessed
 
 
 def extract_paper_info(pdf_path: Path) -> PaperInfo:
@@ -125,30 +132,31 @@ def extract_paper_info(pdf_path: Path) -> PaperInfo:
         except Exception:
             continue
 
-    guessed = False
+    title_guessed = False
     title = meta_title if meta_title.lower() not in PLACEHOLDER_TITLES else ""
     if not title or len(title) < 5:
         guessed_title = guess_title_from_text(text_sample)
         if guessed_title:
             title = guessed_title
-            guessed = True
+            title_guessed = True
         else:
             title = pdf_path.stem
-            guessed = True
+            title_guessed = True
 
     if meta_author.lower() in PLACEHOLDER_AUTHORS:
         meta_author = ""
     author = guess_author_surname(meta_author)
-    if not author:
-        guessed = True
+    author_guessed = not author
+    if author_guessed:
         author = "UnknownAuthor"
 
     year = guess_year(meta_date_str, text_sample)
-    if not year:
-        guessed = True
+    year_guessed = not year
+    if year_guessed:
         year = "UnknownYear"
 
-    return PaperInfo(title=title, author=author, year=year, text_sample=text_sample, guessed=guessed)
+    return PaperInfo(title=title, author=author, year=year, text_sample=text_sample,
+                      title_guessed=title_guessed, author_guessed=author_guessed, year_guessed=year_guessed)
 
 
 def build_filename(info: PaperInfo, original_suffix: str) -> str:
@@ -156,6 +164,10 @@ def build_filename(info: PaperInfo, original_suffix: str) -> str:
     year = sanitize(info.year, 10)
     title = sanitize(info.title, MAX_TITLE_LEN)
     return f"{author}_{year}_{title}{original_suffix}"
+
+
+def build_title_only_filename(info: PaperInfo, original_suffix: str) -> str:
+    return f"{sanitize(info.title, MAX_TITLE_LEN)}{original_suffix}"
 
 
 def load_keywords(path: str) -> dict[str, list[str]]:
@@ -204,6 +216,9 @@ def main(argv: list[str] | None = None) -> int:
                              "(see keywords.example.json)")
     group.add_argument("--by-author", action="store_true",
                         help="Sort into one folder per author's surname instead of by keyword")
+    group.add_argument("--title-only", action="store_true",
+                        help="Don't sort into categories - gather every paper into one folder "
+                             "and rename it to just its title")
     parser.add_argument("--dry-run", action="store_true",
                          help="Show what would happen without moving/renaming anything")
     parser.add_argument("--no-rename", action="store_true",
@@ -213,6 +228,8 @@ def main(argv: list[str] | None = None) -> int:
                               "Documents folder from organize_downloads.py)")
     parser.add_argument("--uncategorized-folder", default=UNCATEGORIZED_DEFAULT,
                          help=f"Folder name for papers matching no keyword (default: {UNCATEGORIZED_DEFAULT})")
+    parser.add_argument("--papers-folder", default="Papers",
+                         help="Folder name to gather papers into when using --title-only (default: Papers)")
     args = parser.parse_args(argv)
 
     target = Path(args.path).expanduser().resolve()
@@ -220,7 +237,7 @@ def main(argv: list[str] | None = None) -> int:
         print(f"Error: '{target}' is not a directory.", file=sys.stderr)
         return 1
 
-    keywords = None if args.by_author else load_keywords(args.keywords)
+    keywords = load_keywords(args.keywords) if args.keywords else None
 
     print(f"Scanning: {target}{' (dry run)' if args.dry_run else ''}")
     processed = 0
@@ -235,7 +252,9 @@ def main(argv: list[str] | None = None) -> int:
             failed += 1
             continue
 
-        if args.by_author:
+        if args.title_only:
+            category = args.papers_folder
+        elif args.by_author:
             category = sanitize(info.author, 40)
         else:
             category = classify(info, keywords, args.uncategorized_folder)
@@ -245,10 +264,16 @@ def main(argv: list[str] | None = None) -> int:
             skipped += 1
             continue
 
-        new_name = pdf_path.name if args.no_rename else build_filename(info, pdf_path.suffix)
+        if args.no_rename:
+            new_name = pdf_path.name
+        elif args.title_only:
+            new_name = build_title_only_filename(info, pdf_path.suffix)
+        else:
+            new_name = build_filename(info, pdf_path.suffix)
         dest_dir = target / category
         dest_path = unique_destination(dest_dir / new_name)
-        note = "  [!] title/author/year guessed - please double-check" if info.guessed and not args.no_rename else ""
+        relevant_guess = info.title_guessed if args.title_only else info.guessed
+        note = "  [!] guessed - please double-check" if relevant_guess and not args.no_rename else ""
 
         if args.dry_run:
             print(f"[dry-run] {pdf_path.name} -> {dest_path.relative_to(target)}{note}")
